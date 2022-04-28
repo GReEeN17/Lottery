@@ -145,67 +145,26 @@ contract Lottery {
             lucky_numbers[i] = one_player[_index_of_game][i].lucky_number;
         }
         int8 lucky;
-        if (game.amount_of_players > 3) {
-            uint256 winners_amount;
-            for (int8 i; i < 101; i++) {
-                bool is_max = false;
-                for (uint256 j; j < game.amount_of_players; j++) {
-                    if (winners_amount == game.amount_of_winners) {
-                        is_max = true;
-                        break;
-                    }
-                    if (
-                        (lucky_numbers[j] == lucky - i) ||
-                        (lucky_numbers[j] == lucky + i)
-                    ) {
-                        game.winners_index.push(j);
-                        winners_amount++;
-                    }
-                }
-                if (is_max) {
+        uint256 winners_amount;
+        for (int8 i; i < 101; i++) {
+            bool is_max = false;
+            for (uint256 j; j < game.amount_of_players; j++) {
+                if (winners_amount == game.amount_of_winners) {
+                    is_max = true;
                     break;
                 }
-            }
-        } else {
-            game.amount_of_winners = 1;
-            if (game.amount_of_players == 1) {
-                game.winners_index.push(0);
-            }
-            if (game.amount_of_players == 2) {
                 if (
-                    abs(int8(lucky_numbers[0] - lucky)) <
-                    abs(int8(lucky_numbers[1] - lucky))
+                    (lucky_numbers[j] == lucky - i) ||
+                    (lucky_numbers[j] == lucky + i)
                 ) {
-                    game.winners_index.push(0);
-                } else {
-                    game.winners_index.push(1);
+                    game.winners_index.push(j);
+                    winners_amount++;
                 }
             }
-            if (game.amount_of_players == 3) {
-                if (
-                    abs(int8(lucky_numbers[0] - lucky)) <
-                    abs(int8(lucky_numbers[1] - lucky))
-                ) {
-                    if (
-                        abs(int8(lucky_numbers[0] - lucky)) <
-                        abs(int8(lucky_numbers[2] - lucky))
-                    ) {
-                        game.winners_index.push(0);
-                    } else {
-                        game.winners_index.push(2);
-                    }
-                } else {
-                    if (
-                        abs(int8(lucky_numbers[1] - lucky)) <
-                        abs(int8(lucky_numbers[2] - lucky))
-                    ) {
-                        game.winners_index.push(1);
-                    } else {
-                        game.winners_index.push(2);
-                    }
-                }
+            if (is_max) {
+                break;
             }
-        }
+        } 
         game.is_ended = true;
     }
 }
