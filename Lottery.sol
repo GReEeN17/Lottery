@@ -2,11 +2,27 @@
 
 pragma solidity ^0.8.8;
 
-contract Lottery {
-    address AddressOfServer;
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-    constructor() {
-        AddressOfServer = msg.sender;
+contract Lottery is VRFConsumerBaseV2 {
+    address addressOfServer;
+    VRFCoordinatorV2Interface COORDINATOR =
+        VRFCoordinatorV2Interface(vrfCoordinator);
+    uint64 s_subscriptionId;
+    address vrfCoordinator = 0x6168499c0cFfCaCD319c818142124B7A15E857ab;
+    bytes32 keyHash =
+        0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc;
+    uint32 callbackGasLimit = 40000;
+    uint16 requestConfirmations = 3;
+    uint32 numWords = 1;
+    uint256 public randomNumber;
+    uint256 requestId;
+
+    constructor(uint64 subscriptionId) VRFConsumerBaseV2(vrfCoordinator) {
+        COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
+        s_subscriptionId = subscriptionId;
+        addressOfServer = msg.sender;
     }
 
     struct InformationAboutPlayer {
@@ -22,6 +38,7 @@ contract Lottery {
         uint256 overall_amount_of_bids;
         uint256 amount_of_winners;
         bool is_ended;
+        uint last_run;
         uint256[] winners_index;
     }
 
@@ -41,6 +58,7 @@ contract Lottery {
         game.max_amount_of_players = _max_amount_of_players;
         game.min_bid = _bid_amount;
         game.overall_amount_of_bids += _bid_amount;
+        game.last_run = block.timestamp;
         game.is_ended = false;
     }
 
@@ -119,9 +137,22 @@ contract Lottery {
         }
     }
 
-    //function random() private view returns(uint){
-    //return uint(keccak256(abi.encodePacked(block.difficulty, now, players)));
-    //}
+    function requestRandomWords() internal {
+        requestId = COORDINATOR.requestRandomWords(
+            keyHash,
+            s_subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
+        );
+    }
+
+    function fulfillRandomWords(uint256, uint256[] memory random_words)
+        internal
+        override
+    {
+        randomNumber = random_words[0] % 100;
+    }
 
     function abs(int8 x) private pure returns (int8) {
         return x >= 0 ? x : -x;
@@ -140,11 +171,13 @@ contract Lottery {
 
     function revealWiners(uint256 _index_of_game) public {
         InformationAboutOneGame storage game = one_game[_index_of_game];
+        require(block.timestamp - game.last_run >= 5 minutes, "You need to wait more time");
         int8[] memory lucky_numbers = new int8[](game.amount_of_players);
         for (uint256 i; i < game.amount_of_players; i++) {
             lucky_numbers[i] = one_player[_index_of_game][i].lucky_number;
         }
-        int8 lucky;
+        requestRandomWords();
+        int8 lucky = int8(int256(randomNumber));
         uint256 winners_amount;
         for (int8 i; i < 101; i++) {
             bool is_max = false;
@@ -164,7 +197,7 @@ contract Lottery {
             if (is_max) {
                 break;
             }
-        } 
+        }
         game.is_ended = true;
     }
 }
